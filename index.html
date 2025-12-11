@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Super Desencriptador Pro — Matrix Ultra</title>
+<style>
+  body {
+    margin:0;
+    font-family: monospace;
+    background: #0d1117;
+    color:#fff;
+    overflow: hidden;
+    height:100vh;
+  }
+
+  canvas#matrix {
+    position: fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    z-index:0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    width: 800px;
+    max-width: 95%;
+    margin: 20px auto;
+    padding: 20px;
+    background: rgba(0,0,0,0.7);
+    border-radius: 15px;
+    overflow-y:auto;
+    max-height: 90vh;
+  }
+
+  h1 {
+    text-align:center;
+    color:#3fb950;
+    margin-bottom:20px;
+  }
+
+  select, input, textarea, button {
+    width:100%;
+    padding:10px;
+    margin-bottom:10px;
+    border-radius:8px;
+    border:none;
+    font-family: monospace;
+    font-size: 16px;
+  }
+
+  select, input, textarea {
+    background:#161b22;
+    color:#fff;
+  }
+
+  button {
+    background:#3fb950;
+    color:#000;
+    font-weight:bold;
+    cursor:pointer;
+  }
+
+  button:hover { background:#56d16e; }
+
+  .output, .info-box {
+    background:#3fb950;
+    color:#000;
+    padding:10px;
+    border-radius:8px;
+    margin-bottom:10px;
+    white-space: pre-wrap;
+  }
+
+  /* Cursor parpadeante */
+  .typing::after {
+    content:'|';
+    color:#3fb950;
+    animation: blink 1s step-start infinite;
+  }
+
+  @keyframes blink { 50% {opacity:0;} }
+
+  /* BIOS estilo inicial */
+  #bios {
+    position: fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:#000;
+    color:#0f0;
+    font-family: monospace;
+    font-size:20px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+    z-index: 100;
+  }
+</style>
+</head>
+<body>
+
+<div id="bios"></div>
+
+<canvas id="matrix"></canvas>
+
+<div class="container" id="main-container" style="display:none;">
+
+<h1>Super Desencriptador Pro — Matrix Ultra</h1>
+
+<label for="cipher">Elegí el cifrado:</label>
+<select id="cipher">
+  <option value="cesar">César</option>
+  <option value="atbash">Atbash</option>
+  <option value="vigenere">Vigenère</option>
+  <option value="morse">Morse</option>
+  <option value="binario">Binario</option>
+</select>
+
+<label for="text">Texto cifrado:</label>
+<textarea id="text" rows="4" placeholder="Escribí tu texto cifrado..." class="typing"></textarea>
+
+<label for="key">Clave / Desplazamiento (según cifrado):</label>
+<input type="text" id="key" placeholder="Para César: número | Para Vigenère: palabra">
+
+<button onclick="desencriptar()">Desencriptar</button>
+
+<h3>Resultado:</h3>
+<div class="output" id="output"></div>
+
+<div class="info-box" id="info-box"></div>
+
+</div>
+
+<script>
+/* =============================
+   BIOS ANIMADO
+============================= */
+const biosMessages=[
+  "SYSTEM BOOTING...",
+  "CHECKING HARDWARE...",
+  "LOADING KERNEL...",
+  "INITIALIZING MATRIX DECODER...",
+  "READY."
+];
+const biosDiv = document.getElementById('bios');
+let biosIndex=0;
+
+function showBios(){
+  if(biosIndex<biosMessages.length){
+    const p=document.createElement('p');
+    p.textContent=biosMessages[biosIndex];
+    biosDiv.appendChild(p);
+    biosIndex++;
+    setTimeout(showBios,3000); // cada mensaje dura 3 segundos aprox
+  } else {
+    biosDiv.style.display='none';
+    document.getElementById('main-container').style.display='block';
+  }
+}
+showBios();
+
+/* =============================
+   MATRIX RAIN
+============================= */
+const canvas = document.getElementById('matrix');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const cols = Math.floor(canvas.width/20);
+const drops = Array(cols).fill(1);
+
+function draw() {
+  ctx.fillStyle='rgba(0,0,0,0.05)';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='#00ff41';
+  ctx.font='20px monospace';
+
+  for(let i=0;i<drops.length;i++){
+    const text = String.fromCharCode(33 + Math.random()*94);
+    ctx.fillText(text,i*20,drops[i]*20);
+    if(drops[i]*20 > canvas.height && Math.random()>0.975) drops[i]=0;
+    drops[i]++;
+  }
+}
+setInterval(draw,50);
+
+/* =============================
+   CIFRADOS
+============================= */
+function cesar(texto, shift) {
+  shift = shift%26;
+  let res = '';
+  for(let c of texto){
+    let code=c.charCodeAt(0);
+    if(code>=65 && code<=90) res+=String.fromCharCode((code-65-shift+26)%26+65);
+    else if(code>=97 && code<=122) res+=String.fromCharCode((code-97-shift+26)%26+97);
+    else res+=c;
+  }
+  return res;
+}
+
+function atbash(texto){
+  let res='';
+  for(let c of texto){
+    if(c>='A'&&c<='Z') res+=String.fromCharCode(90-(c.charCodeAt(0)-65));
+    else if(c>='a'&&c<='z') res+=String.fromCharCode(122-(c.charCodeAt(0)-97));
+    else res+=c;
+  }
+  return res;
+}
+
+function vigenere(texto, clave){
+  clave=clave.toLowerCase();
+  let res='', j=0;
+  for(let i=0;i<texto.length;i++){
+    let c=texto[i];
+    if(c.match(/[a-z]/i)){
+      let shift = clave[j % clave.length].charCodeAt(0)-97;
+      let code=texto.charCodeAt(i);
+      if(code>=65 && code<=90) res+=String.fromCharCode((code-65-shift+26)%26+65);
+      else if(code>=97 && code<=122) res+=String.fromCharCode((code-97-shift+26)%26+97);
+      j++;
+    } else res+=c;
+  }
+  return res;
+}
+
+const morseTable={
+  ".-":"A","-...":"B","-.-.":"C","-..":"D",".":"E","..-.":"F","--.":"G","....":"H",
+  "..":"I",".---":"J","-.-":"K",".-..":"L","--":"M","-.":"N","---":"O",".--.":"P",
+  "--.-":"Q",".-.":"R","...":"S","-":"T","..-":"U","...-":"V",".--":"W","-..-":"X",
+  "-.--":"Y","--..":"Z"
+};
+function morse(txt){
+  // Morse: / separa letras, // separa palabras
+  return txt.split(' // ').map(word => 
+    word.split(' / ').map(letter => morseTable[letter] || '?').join('')
+  ).join(' ');
+}
+
+function binario(txt){
+  return txt.split(' ').map(b=>String.fromCharCode(parseInt(b,2))).join('');
+}
+
+/* =============================
+   DESENCRIPTAR
+============================= */
+function desencriptar(){
+  const metodo = document.getElementById('cipher').value;
+  const texto = document.getElementById('text').value;
+  const clave = document.getElementById('key').value;
+  let out='';
+  let info='';
+
+  if(metodo==='cesar'){ out=cesar(texto,parseInt(clave)||0); info='Cifrado César'; }
+  else if(metodo==='atbash'){ out=atbash(texto); info='Cifrado Atbash'; }
+  else if(metodo==='vigenere'){ out=vigenere(texto,clave||'a'); info='Cifrado Vigenère'; }
+  else if(metodo==='morse'){ out=morse(texto); info='Cifrado Morse'; }
+  else if(metodo==='binario'){ out=binario(texto); info='Código Binario'; }
+
+  document.getElementById('output').textContent=out;
+  document.getElementById('info-box').textContent=info;
+}
+
+/* =============================
+   SCROLL CON FLECHAS
+============================= */
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowDown') window.scrollBy(0,50);
+  else if(e.key==='ArrowUp') window.scrollBy(0,-50);
+});
+</script>
+
+</body>
+</html>
